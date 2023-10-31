@@ -1,14 +1,23 @@
-import telebot
 import asyncio
 import time
-from telebot import types
+from telebot import *
+import requests
+from flask import Flask
 #подключенные библиотеки
-bot = telebot.TeleBot("*****")# токен бота
+
+bot = telebot.TeleBot("********")# токен бота
+
+app = Flask(__name__)
+@app.route('/')
+def hello():
+    return ''
+
 nick = []
 money = 1
 money_user = []
 doxod = 1
 aksesuar = []
+comand = ""#проверка для сервера
 eda = 0
 #переменные для хранения результатов игры
 banan = 10
@@ -45,10 +54,21 @@ def menu(message):
     markup.add(item1, item2, item3, item4, item5)
     bot.send_message(message.chat.id,text = 'Выполнено',reply_markup=markup)
 
+def check_server(comand):
+    try:
+        response = requests.get('http://localhost:5000')
+        if response.status_code == 200:
+            print("Сервер работает успешно")
+        else:
+            print('Проблемы с сервером')
+    except requests.exceptions.RequestException:
+        return 'Не удалось подключиться к серверу'
+
+
 #Вывод кнопок для игры в бота.
 @bot.message_handler()
 def bot_message(message):
-        global proverka
+        global comand
         proverka = 0
     # Переменная пользователя, в которой будут хранится его деньги/рейтинг.
         global money
@@ -65,10 +85,11 @@ def bot_message(message):
         global gorila
         global samka
         global money_user
-    #переменные акссесуаров
-
-#Кнопка "Магазин"
-        if message.text == 'Магазин':
+        #переменные акссесуаров
+        check_server(comand)
+        #Кнопка "Магазин"
+        if message.text == 'Магазин' or message.text == 'магазин':
+            comand = "Магазин"
             proverka += 1
             n = open('Магазин.jpg','rb')
             bot.send_photo(message.chat.id,photo= n,caption='\n=========================='
@@ -200,7 +221,7 @@ def bot_message(message):
             menu(message)
 
         #Восстановление энергии на гориле через кнопку Покормить Гориллу.
-        elif message.text == 'Покормить Гориллу🍽':
+        elif message.text == 'Покормить Гориллу🍽' or message.text == 'покормить гориллу':
             proverka += 1
             n = open('Покормить гориллу.jpg', 'rb')
             # Вывод обратного сообщения после восстановления рейтинг.
@@ -256,11 +277,23 @@ def get_name(message):
     global user_name, nick
     user_name = message.text
 
+def run_flask_server():
+    app.run()
 
-#Запуск бота.
-while True:
-    try:
-        bot.polling(none_stop=True)
-    except Exception as e:
-        print(e)
-        time.sleep(5)
+def run_telegram_bot():
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            print(e)
+            time.sleep(5)
+
+if __name__ == '__main__':
+    flask_thread = threading.Thread(target=run_flask_server)
+    bot_thread = threading.Thread(target=run_telegram_bot)
+
+    flask_thread.start()
+    bot_thread.start()
+
+    flask_thread.join()
+    bot_thread.join()
